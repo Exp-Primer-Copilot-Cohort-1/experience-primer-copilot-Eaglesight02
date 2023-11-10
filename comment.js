@@ -1,47 +1,45 @@
 // Create web server
 const express = require('express');
-const router = express.Router();
-const Comment = require('../schemas/comment');
+const app = express();
 
-// Create comment
-router.post('/', async (req, res, next) => {
-    try {
-        const comment = await Comment.create({
-            commenter: req.body.id,
-            comment: req.body.comment,
-        });
-        console.log(comment);
-        const result = await Comment.populate(comment, { path: 'commenter' });
-        res.status(201).json(result);
-    } catch (error) {
-        console.error(error);
-        next(error);
-    }
+// Set up body-parser
+const bodyParser = require('body-parser');
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
+
+// Set up CORS
+const cors = require('cors');
+app.use(cors());
+
+// Set up mongoose
+const mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost:27017/comment', {useNewUrlParser: true, useUnifiedTopology: true});
+
+// Set up schema
+const Schema = mongoose.Schema;
+const commentSchema = new Schema({
+    name: String,
+    comment: String
+});
+const CommentModel = mongoose.model('comment', commentSchema);
+
+// Set up API
+app.get('/', (req, res) => {
+    CommentModel.find({}, (err, comments) => {
+        res.json(comments);
+    });
 });
 
-// Read comment
-router.route('/:id')
-    .patch(async (req, res, next) => {
-        try {
-            const result = await Comment.update({
-                _id: req.params.id,
-            }, {
-                comment: req.body.comment,
-            });
-            res.json(result);
-        } catch (error) {
-            console.error(error);
-            next(error);
-        }
-    })
-    .delete(async (req, res, next) => {
-        try {
-            const result = await Comment.remove({ _id: req.params.id });
-            res.json(result);
-        } catch (error) {
-            console.error(error);
-            next(error);
-        }
+app.post('/', (req, res) => {
+    CommentModel.create({
+        name: req.body.name,
+        comment: req.body.comment
+    }, () => {
+        res.send('Comment added');
     });
+});
 
-module.exports = router;
+// Set up port
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+});
